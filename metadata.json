@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Informasi Pondok Al-Muttaqin",
+  "description": "Aplikasi manajemen data santri untuk monitoring status aktif, sakit, dan pulang dengan integrasi Supabase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

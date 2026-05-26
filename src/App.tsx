@@ -103,6 +103,7 @@ export default function App() {
   const [nfcSerialInput, setNfcSerialInput] = useState<string>('');
   const [searchNfcSerial, setSearchNfcSerial] = useState<string>('');
   const [copiedSql, setCopiedSql] = useState(false);
+  const [selectedNfcDetailSantri, setSelectedNfcDetailSantri] = useState<Santri | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({ nama: '', kelas: '', status: 'aktif' as SantriStatus });
@@ -315,7 +316,7 @@ export default function App() {
             { id: 'data', icon: Users, label: 'Data Siswa' },
             { id: 'edit-status', icon: Activity, label: 'Ubah Status' },
             { id: 'input', icon: UserPlus, label: 'Input Santri' },
-            { id: 'nfc', icon: CreditCard, label: 'Menu NFC' },
+            { id: 'nfc', icon: CreditCard, label: 'NFC' },
           ].map((item) => (
             <div
               key={item.id}
@@ -765,7 +766,7 @@ export default function App() {
                             <AlertCircle size={20} className="text-rose-500 mx-auto" />
                             <p className="font-bold text-rose-900 text-xs">Kartu NFC Belum Terdaftar</p>
                             <p className="text-[11px] text-rose-550 leading-relaxed">
-                              Nomor kartu ini tidak dikenali. Hubungkan kartu ke profil santri terlebih dahulu di <b>Menu NFC</b>.
+                              Nomor kartu ini tidak dikenali. Hubungkan kartu ke profil santri terlebih dahulu di menu <b>NFC</b>.
                             </p>
                           </motion.div>
                         )}
@@ -1110,10 +1111,7 @@ export default function App() {
                             <td className="py-3 text-right pr-2">
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setSearchNfcSerial(s.nfc_id || '');
-                                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }}
+                                onClick={() => setSelectedNfcDetailSantri(s)}
                                 className="text-blue-600 hover:text-blue-800 font-bold hover:underline"
                               >
                                 Detail Card 🔍
@@ -1137,6 +1135,101 @@ export default function App() {
         </AnimatePresence>
       </main>
       </div>
+
+      {/* NFC Detail Modal / Popup */}
+      <AnimatePresence>
+        {selectedNfcDetailSantri && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedNfcDetailSantri(null)}
+              className="absolute inset-0 bg-slate-900"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', duration: 0.4 }}
+              className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full overflow-hidden z-10"
+              id="nfc-detail-modal"
+            >
+              {/* Header Decorative accent */}
+              <div className="h-2 bg-blue-600" />
+              
+              {/* Close Button Top Right */}
+              <button
+                type="button"
+                onClick={() => setSelectedNfcDetailSantri(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-50 rounded-full transition-all"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="p-6 md:p-8 space-y-6">
+                {/* Profile Card Mockup */}
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-blue-50 border-2 border-blue-100 flex items-center justify-center text-blue-600 font-extrabold text-lg shadow-inner">
+                    {selectedNfcDetailSantri.nama.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-[#0f172a] text-lg leading-snug">{selectedNfcDetailSantri.nama}</h3>
+                    <p className="text-xs text-slate-500 font-semibold mt-0.5">Kelas: {selectedNfcDetailSantri.kelas}</p>
+                  </div>
+                </div>
+
+                {/* NFC Card Graphic */}
+                <div className="bg-[#1e293b] text-white rounded-2xl p-5 border border-slate-800 shadow-lg relative overflow-hidden flex flex-col justify-between h-44">
+                  {/* Decorative Chips */}
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full translate-x-1/3 -translate-y-1/3" />
+                  <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-purple-500/10 rounded-full" />
+                  
+                  <div className="flex justify-between items-start z-10">
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">KARTU DIGITAL NFC</p>
+                      <p className="text-[9px] text-slate-500">{selectedNfcDetailSantri.kelas}</p>
+                    </div>
+                    {/* Wireless Icon Mockup */}
+                    <CreditCard size={20} className="text-blue-400" />
+                  </div>
+
+                  <div className="z-10 mt-auto space-y-2">
+                    <div className="space-y-1">
+                      <p className="text-[8px] text-slate-400 uppercase tracking-wider">Nomor Seri Kartu</p>
+                      <p className="font-mono font-extrabold text-blue-350 uppercase tracking-widest text-base selection:bg-blue-800">
+                        {selectedNfcDetailSantri.nfc_id}
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-end">
+                      <div className="space-y-0.5">
+                        <p className="text-[8px] text-slate-400 uppercase tracking-wider">Pemilik</p>
+                        <p className="text-[11px] font-bold text-slate-100 truncate max-w-[180px]">{selectedNfcDetailSantri.nama}</p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 font-extrabold rounded capitalize ${
+                        selectedNfcDetailSantri.status === 'aktif' ? 'bg-emerald-500/25 text-emerald-300' :
+                        selectedNfcDetailSantri.status === 'sakit' ? 'bg-rose-500/25 text-rose-300' :
+                        'bg-amber-500/25 text-amber-300'
+                      }`}>
+                        {selectedNfcDetailSantri.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Close Button Bottom */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedNfcDetailSantri(null)}
+                  className="w-full bg-slate-100 hover:bg-slate-250 text-slate-800 font-bold py-3 px-4 rounded-xl transition-all active:scale-[0.98] text-xs text-center"
+                >
+                  Tutup
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

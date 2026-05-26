@@ -30,18 +30,20 @@ import { Santri, SantriStatus } from './types';
 
 // Components
 const StatCard = ({ title, value, delay = 0, status }: { title: string, value: number, delay?: number, status: SantriStatus }) => {
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     aktif: 'border-emerald-500',
     sakit: 'border-rose-500',
     pulang: 'border-amber-500'
   };
+
+  const colorClass = statusColors[status] || 'border-slate-400';
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className={`bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-l-4 ${statusColors[status]}`}
+      className={`bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-l-4 ${colorClass}`}
       id={`stat-card-${title.toLowerCase().replace(/\s/g, '-')}`}
     >
       <p className="text-slate-500 text-sm font-medium">{title}</p>
@@ -51,35 +53,113 @@ const StatCard = ({ title, value, delay = 0, status }: { title: string, value: n
 };
 
 const SantriCard = ({ santri }: any) => {
-  const statusConfig = {
+  const statusConfig: Record<string, { badge: string; label: string }> = {
     aktif: { badge: 'badge-aktif', label: 'Aktif' },
     sakit: { badge: 'badge-sakit', label: 'Sakit' },
     pulang: { badge: 'badge-pulang', label: 'Pulang' },
   };
 
-  const config = statusConfig[santri.status];
+  const statusKey = (santri?.status || 'aktif').toLowerCase().trim();
+  const config = statusConfig[statusKey] || statusConfig['aktif'];
 
   return (
     <motion.div
       layout
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-blue-200 hover:shadow-md transition-all"
-      id={`santri-card-${santri.id}`}
+      className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-blue-200 hover:shadow-md transition-all flex flex-col justify-between min-h-[110px]"
+      id={`santri-card-${santri?.id || Math.random()}`}
     >
       <span className={`badge ${config.badge} absolute top-4 right-4`}>
         {config.label}
       </span>
       <div className="space-y-1">
-        <h4 className="font-bold text-slate-900 text-lg leading-tight pr-16">{santri.nama}</h4>
-        <p className="text-sm text-slate-500 font-medium">{santri.kelas}</p>
+        <h4 className="font-bold text-slate-900 text-lg leading-tight pr-16">{santri?.nama || 'Tanpa Nama'}</h4>
+        <p className="text-sm text-slate-500 font-medium">{santri?.kelas || 'Tanpa Kelas'}</p>
       </div>
+      {santri?.nfc_id && (
+        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-1.5 text-[10px] font-mono font-bold text-blue-500">
+          <CreditCard size={12} className="text-blue-500" />
+          <span>NFC: {santri.nfc_id}</span>
+        </div>
+      )}
     </motion.div>
   );
 };
 
+const SupabaseRLSGuide = () => {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(id);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const sqlDisableRLS = `ALTER TABLE santri DISABLE ROW LEVEL SECURITY;`;
+  
+  const sqlEnablePolicies = `-- Buat polisi SELECT (BACA)
+CREATE POLICY "Allow public select" ON santri FOR SELECT USING (true);
+
+-- Buat polisi INSERT (TAMBAH)
+CREATE POLICY "Allow public insert" ON santri FOR INSERT WITH CHECK (true);
+
+-- Buat polisi UPDATE (PERBARUI)
+CREATE POLICY "Allow public update" ON santri FOR UPDATE USING (true) WITH CHECK (true);`;
+
+  return (
+    <div className="bg-slate-900 text-white rounded-2xl p-6 border border-slate-850 shadow-xl space-y-4">
+      <div className="flex items-center gap-2 text-amber-400 font-bold text-sm uppercase tracking-widest">
+        <AlertCircle size={18} />
+        <span>Solusi Gagal Input & Update (Supabase RLS)</span>
+      </div>
+      <p className="text-xs text-slate-300 leading-relaxed">
+        Penting: Hambatan berupa error <code className="bg-slate-800 px-1 py-0.5 rounded text-rose-300 text-[10px]">row-level security policy</code> atau <code className="bg-slate-800 px-1 py-0.5 rounded text-rose-300 text-[10px]">Gagal update</code> terjadi dikarenakan keamanan <b>Row Level Security (RLS)</b> sedang aktif di tabel Supabase dan menutup akses penulisan publik.
+      </p>
+
+      <div className="space-y-4 pt-2 border-t border-slate-800/80">
+        <div className="space-y-1.5">
+          <p className="text-xs font-bold text-slate-200">⚡ Solusi 1 - Matikan RLS (Paling Praktis):</p>
+          <p className="text-[11px] text-slate-400 leading-normal">
+            Buka Dashboard Supabase Anda, cari menu <b className="text-slate-200">SQL Editor</b> di samping kiri, buat New Query, tempelkan perintah berikut, lalu tekan <b className="text-blue-400">Run</b>:
+          </p>
+          <div className="relative bg-[#0c101c] p-3 rounded-lg border border-slate-800 font-mono text-xs flex justify-between items-center text-emerald-400">
+            <span className="truncate pr-2">{sqlDisableRLS}</span>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(sqlDisableRLS, 'disable')}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] px-3 py-1.5 rounded font-bold whitespace-nowrap active:scale-95 transition-all"
+            >
+              {copied === 'disable' ? 'Tersalin! ✅' : 'Salin SQL 📋'}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-1.5 pt-2">
+          <p className="text-xs font-bold text-slate-200">🔒 Solusi 2 - Aktifkan Izin Akses Umum (Tanpa Mematikan RLS):</p>
+          <p className="text-[11px] text-slate-400 leading-normal">
+            Bila ingin RLS tetap menyala, copy query ini lalu jalankan di <b className="text-slate-200">SQL Editor</b> Supabase Anda untuk membuka hak akses SELECT, INSERT, dan UPDATE:
+          </p>
+          <div className="relative bg-[#0c101c] p-3 rounded-lg border border-slate-800 font-mono text-[10px] text-slate-300">
+            <pre className="overflow-x-auto whitespace-pre leading-relaxed pr-2">{sqlEnablePolicies}</pre>
+            <div className="flex justify-end pt-2 mt-2 border-t border-slate-800/40">
+              <button
+                type="button"
+                onClick={() => copyToClipboard(sqlEnablePolicies, 'policies')}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] px-3 py-1.5 rounded font-bold active:scale-95 transition-all"
+              >
+                {copied === 'policies' ? 'Tersalin! ✅' : 'Salin Semua SQL 📋'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'input' | 'search' | 'edit-status'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'input' | 'nfc' | 'edit-status'>('dashboard');
   const [santris, setSantris] = useState<Santri[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +170,13 @@ export default function App() {
   const [selectedKelas, setSelectedKelas] = useState<string>('');
   const [selectedSantriId, setSelectedSantriId] = useState<number | null>(null);
   const [newStatus, setNewStatus] = useState<SantriStatus>('aktif');
+
+  // NFC specific states
+  const [selectedNfcKelas, setSelectedNfcKelas] = useState<string>('');
+  const [selectedNfcSantriId, setSelectedNfcSantriId] = useState<number | null>(null);
+  const [nfcSerialInput, setNfcSerialInput] = useState<string>('');
+  const [searchNfcSerial, setSearchNfcSerial] = useState<string>('');
+  const [copiedSql, setCopiedSql] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({ nama: '', kelas: '', status: 'aktif' as SantriStatus });
@@ -132,6 +219,15 @@ export default function App() {
     return santris.filter(s => s.kelas === selectedKelas);
   }, [santris, selectedKelas]);
 
+  const santriInSelectedNfcClass = useMemo(() => {
+    return santris.filter(s => s.kelas === selectedNfcKelas);
+  }, [santris, selectedNfcKelas]);
+
+  const foundNfcSantri = useMemo(() => {
+    if (!searchNfcSerial.trim()) return null;
+    return santris.find(s => s.nfc_id?.toLowerCase().trim() === searchNfcSerial.toLowerCase().trim());
+  }, [santris, searchNfcSerial]);
+
   const filteredSantri = useMemo(() => {
     return santris.filter(s => {
       const matchSearch = s.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -167,6 +263,37 @@ export default function App() {
     } catch (error: any) {
       console.error('Update status error:', error);
       setMessage({ type: 'error', text: `Gagal: ${error.message}` });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUpdateNfc = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedNfcSantriId || !nfcSerialInput.trim()) return;
+
+    try {
+      setSubmitting(true);
+      setMessage(null);
+      const updated = await santriService.updateSantriNfc(selectedNfcSantriId, nfcSerialInput.trim());
+      
+      if (!updated.id) {
+        throw new Error('Update NFC gagal. Pastikan tabel "santri" memiliki kolom "nfc_id" (tipe TEXT) di Supabase.');
+      }
+
+      setMessage({ type: 'success', text: `NFC serial "${nfcSerialInput}" berhasil dikoordinasikan untuk ${updated.nama}` });
+      await fetchSantri();
+      
+      setTimeout(() => {
+        setActiveTab('data');
+        setMessage(null);
+        setSelectedNfcSantriId(null);
+        setSelectedNfcKelas('');
+        setNfcSerialInput('');
+      }, 1500);
+    } catch (error: any) {
+      console.error('Update NFC error:', error);
+      setMessage({ type: 'error', text: `Gagal menautkan NFC: ${error.message || 'Error tidak diketahui'}` });
     } finally {
       setSubmitting(false);
     }
@@ -219,7 +346,7 @@ export default function App() {
             { id: 'data', icon: Users, label: 'Data Siswa' },
             { id: 'edit-status', icon: Activity, label: 'Ubah Status' },
             { id: 'input', icon: UserPlus, label: 'Input Santri' },
-            { id: 'search', icon: Search, label: 'Pencarian' },
+            { id: 'nfc', icon: CreditCard, label: 'Menu NFC' },
           ].map((item) => (
             <div
               key={item.id}
@@ -378,6 +505,27 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Search bar inside student data for both desktop and mobile */}
+              <div className="relative group max-w-md shadow-sm rounded-xl">
+                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                <input 
+                  type="text" 
+                  placeholder="Cari nama atau kelas siswa..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-xl py-3.5 pl-11 pr-12 w-full text-sm outline-none focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all font-medium text-slate-700"
+                />
+                {searchQuery && (
+                  <button 
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 active:scale-95 transition-all"
+                  >
+                    Hapus
+                  </button>
+                )}
+              </div>
+
               {error && (
                 <div className="bg-rose-50 border border-rose-100 p-6 rounded-2xl text-center">
                   <AlertCircle size={40} className="text-rose-500 mx-auto mb-4" />
@@ -512,6 +660,11 @@ export default function App() {
                   Daftarkan Santri
                 </button>
               </form>
+
+              {/* RLS Troubleshooting Guide */}
+              <div className="mt-8">
+                <SupabaseRLSGuide />
+              </div>
             </motion.div>
           )}
 
@@ -625,67 +778,311 @@ export default function App() {
                   Update Status Santri
                 </button>
               </form>
+
+              {/* RLS Troubleshooting Guide */}
+              <div className="mt-8">
+                <SupabaseRLSGuide />
+              </div>
             </motion.div>
           )}
 
-          {activeTab === 'search' && (
+          {activeTab === 'nfc' && (
             <motion.div
-              key="search"
+              key="nfc"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="space-y-8"
-              id="search-view"
+              className="space-y-8 max-w-4xl mx-auto"
+              id="nfc-view"
             >
-              <div className="max-w-2xl mx-auto w-full md:hidden">
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors">
-                    <Search size={20} />
+              <div className="text-center md:text-left">
+                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Sistem Kartu NFC</h2>
+                <p className="text-slate-500 text-sm">Registrasi serial number kartu NFC siswa dan lacak kepemilikan kartu.</p>
+              </div>
+
+              {message && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-4 rounded-xl flex items-center gap-3 ${
+                    message.type === 'success' 
+                      ? 'bg-green-50 text-green-700 border border-green-100' 
+                      : 'bg-red-50 text-red-700 border border-red-100'
+                  }`}
+                >
+                  {message.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                  <p className="text-sm font-medium">{message.text}</p>
+                </motion.div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Section 1: Cek Pemilik Kartu (Scan/Lookup) */}
+                <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                  <div>
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                      <Search size={18} className="text-blue-600" />
+                      Cari Pemilik Kartu NFC
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">Masukkan atau tempelkan serial number kartu NFC untuk mendeteksi siapa pemiliknya secara instan.</p>
                   </div>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-14 pr-6 py-5 rounded-2xl bg-white shadow-xl shadow-slate-200/50 border border-slate-100 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 font-bold text-lg transition-all outline-none"
-                    placeholder="Ketik nama atau kelas..."
-                  />
+
+                  <div className="relative group">
+                    <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-650 transition-colors" />
+                    <input
+                      type="text"
+                      value={searchNfcSerial}
+                      onChange={(e) => setSearchNfcSerial(e.target.value)}
+                      className="w-full pl-11 pr-12 py-3.5 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all font-semibold uppercase tracking-wider text-slate-800"
+                      placeholder="Tempel / ketik serial number NFC..."
+                    />
+                    {searchNfcSerial && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchNfcSerial('')}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 active:scale-95 transition-all"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Deteksi Owner Result */}
+                  <div className="pt-4 border-t border-slate-100">
+                    {searchNfcSerial.trim() === '' ? (
+                      <div className="text-center py-10 text-slate-350 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                        <CreditCard size={40} className="mx-auto text-slate-200 mb-3 animate-pulse" />
+                        <p className="text-xs font-semibold text-slate-500">Menunggu pemindaian kartu...</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Silakan scan kartu atau masukkan Serial Number di atas.</p>
+                      </div>
+                    ) : foundNfcSantri ? (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-xl space-y-3 relative overflow-hidden"
+                      >
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full translate-x-1/3 -translate-y-1/3" />
+                        <span className="text-[10px] uppercase font-extrabold tracking-wider text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                          Kartu NFC Aktif & Terdaftar ✅
+                        </span>
+                        
+                        <div className="space-y-1 pt-1">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Identitas Pemilik</p>
+                          <h4 className="font-extrabold text-[#0f172a] text-lg leading-tight">{foundNfcSantri.nama}</h4>
+                          <p className="text-sm text-slate-600 font-semibold">Kelas: {foundNfcSantri.kelas}</p>
+                          
+                          <div className="flex items-center gap-2 pt-2">
+                            <span className="text-[10px] text-slate-400 font-bold">Status Kehadiran:</span>
+                            <span className={`badge text-[10px] px-2 py-0.5 font-bold rounded capitalize ${
+                              foundNfcSantri.status === 'aktif' ? 'bg-emerald-100 text-emerald-800' :
+                              foundNfcSantri.status === 'sakit' ? 'bg-rose-100 text-rose-800' :
+                              'bg-amber-100 text-amber-800'
+                            }`}>
+                              {foundNfcSantri.status}
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="bg-rose-50/50 border border-rose-100 p-5 rounded-xl text-center space-y-2"
+                      >
+                        <AlertCircle size={24} className="text-rose-400 mx-auto" />
+                        <p className="font-bold text-rose-900 text-sm">Kartu Tidak Dikenali</p>
+                        <p className="text-xs text-rose-500 leading-normal">
+                          Nomor kartu <code className="bg-rose-100 hover:bg-rose-200 px-1 py-0.5 rounded font-mono font-bold text-[11px] text-rose-800 uppercase">{searchNfcSerial}</code> belum terdaftar pada siswa manapun.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNfcSerialInput(searchNfcSerial);
+                            // Set focus / open assignment fields
+                          }}
+                          className="text-[11px] bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-3 rounded-md transition-all active:scale-95 mt-1"
+                        >
+                          Tautkan Kartu Ini Ke Siswa
+                        </button>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section 2: Registrasi Kartu NFC Baru */}
+                <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                  <div>
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                      <UserPlus size={18} className="text-blue-600" />
+                      Registrasi Kartu NFC Siswa
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">Tautkan serial number kartu NFC ke identitas santri yang sudah terdaftar.</p>
+                  </div>
+
+                  <form onSubmit={handleUpdateNfc} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 ml-1">Pilih Kelas</label>
+                      <select
+                        value={selectedNfcKelas}
+                        onChange={(e) => {
+                          setSelectedNfcKelas(e.target.value);
+                          setSelectedNfcSantriId(null);
+                        }}
+                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-sm text-slate-700"
+                        required
+                      >
+                        <option value="">-- Pilih Kelas --</option>
+                        {classes.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {selectedNfcKelas && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="space-y-1.5"
+                        >
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 ml-1">Pilih Santri</label>
+                          <select
+                            value={selectedNfcSantriId || ''}
+                            onChange={(e) => {
+                              const id = Number(e.target.value);
+                              setSelectedNfcSantriId(id);
+                              const s = santris.find(x => x.id === id);
+                              if (s && s.nfc_id) {
+                                setNfcSerialInput(s.nfc_id);
+                              } else {
+                                setNfcSerialInput('');
+                              }
+                            }}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-sm text-slate-700"
+                            required
+                          >
+                            <option value="">-- Pilih Nama Santri --</option>
+                            {santriInSelectedNfcClass.map(s => (
+                              <option key={s.id} value={s.id}>{s.nama} {s.nfc_id ? `(NFC Terdaftar: ${s.nfc_id})` : '(Belum ada kartu)'}</option>
+                            ))}
+                          </select>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <AnimatePresence mode="wait">
+                      {selectedNfcSantriId && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="space-y-1.5"
+                        >
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 ml-1">Serial Number NFC/RFID</label>
+                          <input
+                            type="text"
+                            value={nfcSerialInput}
+                            onChange={(e) => setNfcSerialInput(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all font-semibold uppercase text-sm text-slate-800 tracking-wider"
+                            placeholder="Ketik/Scan No. Seri baru..."
+                            required
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <button
+                      type="submit"
+                      disabled={submitting || !selectedNfcSantriId || !nfcSerialInput.trim()}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-100 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm disabled:opacity-30 disabled:cursor-not-allowed mt-2"
+                    >
+                      {submitting ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                      Simpan Serial NFC
+                    </button>
+                  </form>
                 </div>
               </div>
 
-              {searchQuery && (
-                <div className="space-y-8">
-                   <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                     <h3 className="font-extrabold text-slate-400 uppercase tracking-[0.2em] text-[10px]">
-                       Hasil Pencarian ({filteredSantri.length})
-                     </h3>
-                     <button onClick={() => setSearchQuery('')} className="text-[10px] uppercase font-bold text-blue-600 hover:underline">Hapus Filter</button>
-                   </div>
+              {/* NFC SQL Guide & Troubleshooting */}
+              <div className="bg-slate-900 text-white rounded-2xl p-6 border border-slate-800 shadow-xl space-y-4">
+                <div className="flex items-center gap-2 text-blue-400 font-bold text-sm uppercase tracking-widest">
+                  <AlertCircle size={18} />
+                  <span>Petunjuk Penting - Kolom Database NFC</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Apabila penyimpanan NFC menyebabkan error, hal tersebut berarti kolom <code className="bg-slate-800 px-1.5 py-0.5 rounded text-rose-300 text-[10px] font-mono">nfc_id</code> belum terdaftar di tabel <b>santri</b> Supabase Anda. 
+                  Sila salin perintah SQL di bawah ini dan jalankan pada <b className="text-slate-200">SQL Editor</b> Supabase Anda untuk menambahkan kolom tersebut secara otomatis:
+                </p>
+                <div className="relative bg-[#0c101c] p-3 rounded-lg border border-slate-800 font-mono text-xs flex justify-between items-center text-emerald-400">
+                  <span className="truncate pr-2">ALTER TABLE santri ADD COLUMN IF NOT EXISTS nfc_id TEXT;</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText("ALTER TABLE santri ADD COLUMN IF NOT EXISTS nfc_id TEXT;");
+                      setCopiedSql(true);
+                      setTimeout(() => setCopiedSql(false), 2000);
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] px-3 py-1.5 rounded font-bold whitespace-nowrap active:scale-95 transition-all"
+                  >
+                    {copiedSql ? 'Tersalin! ✅' : 'Salin SQL 📋'}
+                  </button>
+                </div>
+              </div>
 
-                   {filteredSantri.length > 0 ? (
-                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredSantri.map((s) => (
-                          <SantriCard key={s.id} santri={s} />
-                        ))}
-                     </div>
-                   ) : (
-                     <div className="text-center py-24 bg-white rounded-3xl border border-slate-100 shadow-sm">
-                       <Users size={64} className="mx-auto mb-6 text-slate-100" />
-                       <p className="text-slate-400 font-bold text-lg">Waduh! data "{searchQuery}" tidak ada.</p>
-                       <p className="text-sm text-slate-300">Coba cek ejaan atau gunakan kriteria pencarian lain.</p>
-                     </div>
-                   )}
+              {/* List of currently registered NFC cards */}
+              <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                    <Users size={18} className="text-blue-600" />
+                    Daftar Kartu NFC Terdaftar
+                  </h3>
+                  <span className="text-xs bg-slate-100 px-2.5 py-1 rounded-full text-slate-500 font-bold">
+                    {santris.filter(s => s.nfc_id).length} Kartu
+                  </span>
                 </div>
-              )}
-              
-              {!searchQuery && (
-                <div className="text-center py-32 select-none">
-                  <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-8">
-                     <Search size={48} className="text-blue-200" />
-                  </div>
-                  <p className="text-2xl font-extrabold text-slate-300 uppercase tracking-widest">Siap Mencari...</p>
-                  <p className="text-slate-400 text-sm mt-2">Gunakan input pencarian di atas untuk mulai.</p>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">
+                        <th className="pb-3 pl-2">Nama Santri</th>
+                        <th className="pb-3">Kelas</th>
+                        <th className="pb-3">Nomor Seri NFC</th>
+                        <th className="pb-3 text-right pr-2">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 text-xs text-slate-700">
+                      {santris.filter(s => s.nfc_id).length > 0 ? (
+                        santris.filter(s => s.nfc_id).map(s => (
+                          <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-3 pl-2 font-bold text-slate-850">{s.nama}</td>
+                            <td className="py-3 text-slate-500 font-semibold">{s.kelas}</td>
+                            <td className="py-3 font-mono font-bold text-blue-600 uppercase tracking-widest">{s.nfc_id}</td>
+                            <td className="py-3 text-right pr-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSearchNfcSerial(s.nfc_id || '');
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                                className="text-blue-600 hover:text-blue-800 font-bold hover:underline"
+                              >
+                                Detail Card 🔍
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-slate-400 italic">
+                            Belum ada kartu NFC yang ditautkan ke siswa.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -699,7 +1096,7 @@ export default function App() {
           { id: 'data', icon: Users },
           { id: 'edit-status', icon: Activity },
           { id: 'input', icon: UserPlus },
-          { id: 'search', icon: Search },
+          { id: 'nfc', icon: CreditCard },
         ].map((item) => (
           <button
             key={item.id}

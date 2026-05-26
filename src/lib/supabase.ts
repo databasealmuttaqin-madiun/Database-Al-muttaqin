@@ -59,6 +59,22 @@ export const santriService = {
     return (data?.[0] || {}) as Santri;
   },
 
+  async updateSantriNfc(id: number, nfcId: string) {
+    console.log(`Attempting to update NFC for ID ${id} to: ${nfcId}`);
+    const { data, error } = await supabase
+      .from('santri')
+      .update({ nfc_id: nfcId })
+      .eq('id', id)
+      .select();
+    
+    if (error) {
+      console.error('Supabase Error (updateSantriNfc):', error);
+      throw error;
+    }
+    console.log('Successfully updated NFC:', data?.[0]);
+    return (data?.[0] || {}) as Santri;
+  },
+
   async searchSantri(query: string) {
     const { data, error } = await supabase
       .from('santri')

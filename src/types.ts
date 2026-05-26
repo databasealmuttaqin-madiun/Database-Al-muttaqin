@@ -5,5 +5,6 @@ export interface Santri {
   nama: string;
   kelas: string;
   status: SantriStatus;
+  nfc_id?: string;
   created_at?: string;
 }

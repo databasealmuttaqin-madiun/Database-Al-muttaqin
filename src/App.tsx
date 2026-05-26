@@ -77,84 +77,7 @@ const SantriCard = ({ santri }: any) => {
         <h4 className="font-bold text-slate-900 text-lg leading-tight pr-16">{santri?.nama || 'Tanpa Nama'}</h4>
         <p className="text-sm text-slate-500 font-medium">{santri?.kelas || 'Tanpa Kelas'}</p>
       </div>
-      {santri?.nfc_id && (
-        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-1.5 text-[10px] font-mono font-bold text-blue-500">
-          <CreditCard size={12} className="text-blue-500" />
-          <span>NFC: {santri.nfc_id}</span>
-        </div>
-      )}
     </motion.div>
-  );
-};
-
-const SupabaseRLSGuide = () => {
-  const [copied, setCopied] = useState<string | null>(null);
-
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(id);
-    setTimeout(() => setCopied(null), 2000);
-  };
-
-  const sqlDisableRLS = `ALTER TABLE santri DISABLE ROW LEVEL SECURITY;`;
-  
-  const sqlEnablePolicies = `-- Buat polisi SELECT (BACA)
-CREATE POLICY "Allow public select" ON santri FOR SELECT USING (true);
-
--- Buat polisi INSERT (TAMBAH)
-CREATE POLICY "Allow public insert" ON santri FOR INSERT WITH CHECK (true);
-
--- Buat polisi UPDATE (PERBARUI)
-CREATE POLICY "Allow public update" ON santri FOR UPDATE USING (true) WITH CHECK (true);`;
-
-  return (
-    <div className="bg-slate-900 text-white rounded-2xl p-6 border border-slate-850 shadow-xl space-y-4">
-      <div className="flex items-center gap-2 text-amber-400 font-bold text-sm uppercase tracking-widest">
-        <AlertCircle size={18} />
-        <span>Solusi Gagal Input & Update (Supabase RLS)</span>
-      </div>
-      <p className="text-xs text-slate-300 leading-relaxed">
-        Penting: Hambatan berupa error <code className="bg-slate-800 px-1 py-0.5 rounded text-rose-300 text-[10px]">row-level security policy</code> atau <code className="bg-slate-800 px-1 py-0.5 rounded text-rose-300 text-[10px]">Gagal update</code> terjadi dikarenakan keamanan <b>Row Level Security (RLS)</b> sedang aktif di tabel Supabase dan menutup akses penulisan publik.
-      </p>
-
-      <div className="space-y-4 pt-2 border-t border-slate-800/80">
-        <div className="space-y-1.5">
-          <p className="text-xs font-bold text-slate-200">⚡ Solusi 1 - Matikan RLS (Paling Praktis):</p>
-          <p className="text-[11px] text-slate-400 leading-normal">
-            Buka Dashboard Supabase Anda, cari menu <b className="text-slate-200">SQL Editor</b> di samping kiri, buat New Query, tempelkan perintah berikut, lalu tekan <b className="text-blue-400">Run</b>:
-          </p>
-          <div className="relative bg-[#0c101c] p-3 rounded-lg border border-slate-800 font-mono text-xs flex justify-between items-center text-emerald-400">
-            <span className="truncate pr-2">{sqlDisableRLS}</span>
-            <button
-              type="button"
-              onClick={() => copyToClipboard(sqlDisableRLS, 'disable')}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] px-3 py-1.5 rounded font-bold whitespace-nowrap active:scale-95 transition-all"
-            >
-              {copied === 'disable' ? 'Tersalin! ✅' : 'Salin SQL 📋'}
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-1.5 pt-2">
-          <p className="text-xs font-bold text-slate-200">🔒 Solusi 2 - Aktifkan Izin Akses Umum (Tanpa Mematikan RLS):</p>
-          <p className="text-[11px] text-slate-400 leading-normal">
-            Bila ingin RLS tetap menyala, copy query ini lalu jalankan di <b className="text-slate-200">SQL Editor</b> Supabase Anda untuk membuka hak akses SELECT, INSERT, dan UPDATE:
-          </p>
-          <div className="relative bg-[#0c101c] p-3 rounded-lg border border-slate-800 font-mono text-[10px] text-slate-300">
-            <pre className="overflow-x-auto whitespace-pre leading-relaxed pr-2">{sqlEnablePolicies}</pre>
-            <div className="flex justify-end pt-2 mt-2 border-t border-slate-800/40">
-              <button
-                type="button"
-                onClick={() => copyToClipboard(sqlEnablePolicies, 'policies')}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] px-3 py-1.5 rounded font-bold active:scale-95 transition-all"
-              >
-                {copied === 'policies' ? 'Tersalin! ✅' : 'Salin Semua SQL 📋'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 };
 
@@ -660,11 +583,6 @@ export default function App() {
                   Daftarkan Santri
                 </button>
               </form>
-
-              {/* RLS Troubleshooting Guide */}
-              <div className="mt-8">
-                <SupabaseRLSGuide />
-              </div>
             </motion.div>
           )}
 
@@ -778,11 +696,6 @@ export default function App() {
                   Update Status Santri
                 </button>
               </form>
-
-              {/* RLS Troubleshooting Guide */}
-              <div className="mt-8">
-                <SupabaseRLSGuide />
-              </div>
             </motion.div>
           )}
 
@@ -1000,32 +913,6 @@ export default function App() {
                       Simpan Serial NFC
                     </button>
                   </form>
-                </div>
-              </div>
-
-              {/* NFC SQL Guide & Troubleshooting */}
-              <div className="bg-slate-900 text-white rounded-2xl p-6 border border-slate-800 shadow-xl space-y-4">
-                <div className="flex items-center gap-2 text-blue-400 font-bold text-sm uppercase tracking-widest">
-                  <AlertCircle size={18} />
-                  <span>Petunjuk Penting - Kolom Database NFC</span>
-                </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Apabila penyimpanan NFC menyebabkan error, hal tersebut berarti kolom <code className="bg-slate-800 px-1.5 py-0.5 rounded text-rose-300 text-[10px] font-mono">nfc_id</code> belum terdaftar di tabel <b>santri</b> Supabase Anda. 
-                  Sila salin perintah SQL di bawah ini dan jalankan pada <b className="text-slate-200">SQL Editor</b> Supabase Anda untuk menambahkan kolom tersebut secara otomatis:
-                </p>
-                <div className="relative bg-[#0c101c] p-3 rounded-lg border border-slate-800 font-mono text-xs flex justify-between items-center text-emerald-400">
-                  <span className="truncate pr-2">ALTER TABLE santri ADD COLUMN IF NOT EXISTS nfc_id TEXT;</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText("ALTER TABLE santri ADD COLUMN IF NOT EXISTS nfc_id TEXT;");
-                      setCopiedSql(true);
-                      setTimeout(() => setCopiedSql(false), 2000);
-                    }}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] px-3 py-1.5 rounded font-bold whitespace-nowrap active:scale-95 transition-all"
-                  >
-                    {copiedSql ? 'Tersalin! ✅' : 'Salin SQL 📋'}
-                  </button>
                 </div>
               </div>
 

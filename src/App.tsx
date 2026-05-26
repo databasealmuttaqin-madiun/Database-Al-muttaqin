@@ -83,6 +83,7 @@ const SantriCard = ({ santri }: any) => {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'input' | 'nfc' | 'edit-status'>('dashboard');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [santris, setSantris] = useState<Santri[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +94,8 @@ export default function App() {
   const [selectedKelas, setSelectedKelas] = useState<string>('');
   const [selectedSantriId, setSelectedSantriId] = useState<number | null>(null);
   const [newStatus, setNewStatus] = useState<SantriStatus>('aktif');
+  const [editStatusNfcSerial, setEditStatusNfcSerial] = useState<string>('');
+  const [editStatusMode, setEditStatusMode] = useState<'nfc' | 'manual'>('nfc');
 
   // NFC specific states
   const [selectedNfcKelas, setSelectedNfcKelas] = useState<string>('');
@@ -151,6 +154,22 @@ export default function App() {
     return santris.find(s => s.nfc_id?.toLowerCase().trim() === searchNfcSerial.toLowerCase().trim());
   }, [santris, searchNfcSerial]);
 
+  const foundEditStatusSantri = useMemo(() => {
+    if (!editStatusNfcSerial.trim()) return null;
+    return santris.find(s => s.nfc_id?.toLowerCase().trim() === editStatusNfcSerial.toLowerCase().trim());
+  }, [santris, editStatusNfcSerial]);
+
+  useEffect(() => {
+    if (editStatusMode === 'nfc') {
+      if (foundEditStatusSantri) {
+        setSelectedSantriId(foundEditStatusSantri.id);
+        setNewStatus(foundEditStatusSantri.status);
+      } else {
+        setSelectedSantriId(null);
+      }
+    }
+  }, [foundEditStatusSantri, editStatusMode]);
+
   const filteredSantri = useMemo(() => {
     return santris.filter(s => {
       const matchSearch = s.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -182,6 +201,7 @@ export default function App() {
         setMessage(null);
         setSelectedSantriId(null);
         setSelectedKelas('');
+        setEditStatusNfcSerial('');
       }, 1500);
     } catch (error: any) {
       console.error('Update status error:', error);
@@ -255,12 +275,38 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 md:pl-64 flex">
-      {/* Sidebar Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-[#0f172a] h-screen fixed left-0 top-0 z-40 overflow-hidden">
-        <div className="p-8 flex flex-col gap-1 border-b border-slate-800/50" id="site-logo">
-          <h1 className="text-xl font-bold tracking-tight text-white uppercase">PONDOK PESANTREN AL MUTTAQIN</h1>
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans md:pl-64 flex w-full overflow-x-hidden">
+      {/* Backdrop for Mobile Sidebar */}
+      <AnimatePresence>
+        {isMobileSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.5 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="fixed inset-0 bg-black z-40 md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar (Unified for Desktop and Mobile) */}
+      <aside 
+        className={`fixed left-0 top-0 h-screen w-64 bg-[#0f172a] z-50 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${
+          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-8 flex flex-col gap-1 border-b border-slate-800/50 relative" id="site-logo">
+          <h1 className="text-xl font-bold tracking-tight text-white uppercase pr-8">PONDOK PESANTREN AL MUTTAQIN</h1>
           <p className="text-slate-500 text-[10px] uppercase tracking-widest font-bold">Database Pondok</p>
+          
+          {/* Close Menu Button for Mobile */}
+          <button 
+            type="button"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="absolute top-8 right-4 text-slate-400 hover:text-white p-1 rounded-lg md:hidden transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="mt-6 flex-1">
@@ -273,7 +319,10 @@ export default function App() {
           ].map((item) => (
             <div
               key={item.id}
-              onClick={() => setActiveTab(item.id as any)}
+              onClick={() => {
+                setActiveTab(item.id as any);
+                setIsMobileSidebarOpen(false); // Close immediately on click
+              }}
               className={`sidebar-item ${activeTab === item.id ? 'active' : ''}`}
               id={`nav-desktop-${item.id}`}
             >
@@ -324,9 +373,18 @@ export default function App() {
         <main className="p-4 md:p-8 flex-1">
           {/* Mobile Header */}
           <header className="mb-6 flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm md:hidden">
-              <div className="flex flex-col">
-                <h1 className="font-bold text-lg text-slate-900 leading-tight">PONDOK PESANTREN AL MUTTAQIN</h1>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{activeTab}</p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsMobileSidebarOpen(true)}
+                  className="p-2 text-slate-600 hover:text-slate-900 active:scale-95 transition-all bg-slate-50 rounded-lg border border-slate-200"
+                >
+                  <Menu size={20} />
+                </button>
+                <div className="flex flex-col">
+                  <h1 className="font-bold text-sm text-slate-900 leading-tight">AL MUTTAQIN</h1>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-0.5">{activeTab}</p>
+                </div>
               </div>
               <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">AD</div>
           </header>
@@ -595,9 +653,9 @@ export default function App() {
               className="max-w-xl mx-auto"
               id="edit-status-view"
             >
-              <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold">Ubah Status Santri</h2>
-                <p className="text-gray-500">Update keberadaan santri yang sudah terdaftar.</p>
+              <div className="mb-8 text-center bg-white p-6 rounded-2xl border border-slate-200 shadow-sm md:bg-transparent md:p-0 md:border-0 md:shadow-none">
+                <h2 className="text-2xl font-bold text-slate-900 leading-tight">Ubah Status Santri</h2>
+                <p className="text-slate-500 text-sm mt-1 font-medium">Update keberadaan santri yang sudah terdaftar menggunakan scan kartu NFC atau manual.</p>
               </div>
 
               {message && (
@@ -613,74 +671,178 @@ export default function App() {
                 </motion.div>
               )}
 
-              <form onSubmit={handleUpdateStatus} className="bg-white p-10 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 space-y-8">
-                <div className="space-y-3">
-                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Pilih Kelas</label>
-                  <select
-                    value={selectedKelas}
-                    onChange={(e) => {
-                      setSelectedKelas(e.target.value);
-                      setSelectedSantriId(null);
-                    }}
-                    className="w-full px-4 py-4 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer"
-                    required
-                  >
-                    <option value="">-- Pilih Kelas --</option>
-                    {classes.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Mode Selector Option tabs */}
+              <div className="flex bg-slate-200/60 p-1.5 rounded-xl mb-6 border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditStatusMode('nfc');
+                    setSelectedSantriId(null);
+                    setSelectedKelas('');
+                    setEditStatusNfcSerial('');
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold transition-all ${
+                    editStatusMode === 'nfc'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <CreditCard size={15} />
+                  Scan Kartu NFC
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditStatusMode('manual');
+                    setSelectedSantriId(null);
+                    setSelectedKelas('');
+                    setEditStatusNfcSerial('');
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold transition-all ${
+                    editStatusMode === 'manual'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Users size={15} />
+                  Pilih Manual (Kelas)
+                </button>
+              </div>
 
-                <AnimatePresence>
-                  {selectedKelas && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="space-y-3"
-                    >
-                      <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Pilih Santri</label>
+              <form onSubmit={handleUpdateStatus} className="bg-white p-6 md:p-10 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/80 space-y-6">
+                {editStatusMode === 'nfc' ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-slate-400 ml-1">Tempelkan Kartu NFC</label>
+                      <div className="relative group">
+                        <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                        <input
+                          type="text"
+                          value={editStatusNfcSerial}
+                          onChange={(e) => setEditStatusNfcSerial(e.target.value)}
+                          className="w-full pl-11 pr-12 py-3.5 rounded-xl bg-slate-50 border border-slate-250 outline-none focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all font-semibold uppercase tracking-wider text-slate-800 text-sm"
+                          placeholder="Masukkan/tempel No Seri kartu Anda..."
+                          autoFocus
+                        />
+                        {editStatusNfcSerial && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditStatusNfcSerial('');
+                              setSelectedSantriId(null);
+                            }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-650 active:scale-95 transition-all"
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {editStatusNfcSerial.trim() && (
+                      <div className="pt-2">
+                        {foundEditStatusSantri ? (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-xl space-y-2"
+                          >
+                            <span className="text-[10px] uppercase font-extrabold tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                              Santri Terdeteksi ✅
+                            </span>
+                            <div>
+                              <h4 className="font-extrabold text-[#0f172a] text-base leading-snug">{foundEditStatusSantri.nama}</h4>
+                              <p className="text-xs text-slate-600 font-bold mt-0.5">Kelas: {foundEditStatusSantri.kelas}</p>
+                              <p className="text-xs text-slate-500 font-medium mt-0.5">Status Saat Ini: <span className="font-bold text-slate-700 capitalize">{foundEditStatusSantri.status}</span></p>
+                            </div>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="bg-rose-50/50 border border-rose-100 p-4 rounded-xl text-center space-y-1"
+                          >
+                            <AlertCircle size={20} className="text-rose-500 mx-auto" />
+                            <p className="font-bold text-rose-900 text-xs">Kartu NFC Belum Terdaftar</p>
+                            <p className="text-[11px] text-rose-550 leading-relaxed">
+                              Nomor kartu ini tidak dikenali. Hubungkan kartu ke profil santri terlebih dahulu di <b>Menu NFC</b>.
+                            </p>
+                          </motion.div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-slate-400 ml-1">Pilih Kelas</label>
                       <select
-                        value={selectedSantriId || ''}
+                        value={selectedKelas}
                         onChange={(e) => {
-                          const id = Number(e.target.value);
-                          setSelectedSantriId(id);
-                          const s = santris.find(x => x.id === id);
-                          if (s) setNewStatus(s.status);
+                          setSelectedKelas(e.target.value);
+                          setSelectedSantriId(null);
                         }}
-                        className="w-full px-4 py-4 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer"
-                        required
+                        className="w-full px-4 py-4 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-sm"
+                        required={editStatusMode === 'manual'}
                       >
-                        <option value="">-- Pilih Nama Santri --</option>
-                        {santriInSelectedClass.map(s => (
-                          <option key={s.id} value={s.id}>{s.nama} ({s.status})</option>
+                        <option value="">-- Pilih Kelas --</option>
+                        {classes.map(c => (
+                          <option key={c} value={c}>{c}</option>
                         ))}
                       </select>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+
+                    <AnimatePresence>
+                      {selectedKelas && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="space-y-3"
+                        >
+                          <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Pilih Santri</label>
+                          <select
+                            value={selectedSantriId || ''}
+                            onChange={(e) => {
+                              const id = Number(e.target.value);
+                              setSelectedSantriId(id);
+                              const s = santris.find(x => x.id === id);
+                              if (s) setNewStatus(s.status);
+                            }}
+                            className="w-full px-4 py-4 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-sm"
+                            required={editStatusMode === 'manual'}
+                          >
+                            <option value="">-- Pilih Nama Santri --</option>
+                            {santriInSelectedClass.map(s => (
+                              <option key={s.id} value={s.id}>{s.nama} ({s.status})</option>
+                            ))}
+                          </select>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
 
                 <AnimatePresence>
                   {selectedSantriId && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
-                      className="space-y-4"
+                      className="space-y-4 pt-4 border-t border-slate-100"
                     >
-                      <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Status Baru</label>
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-slate-400 ml-1">Status Baru</label>
                       <div className="grid grid-cols-3 gap-3">
                         {(['aktif', 'sakit', 'pulang'] as const).map((s) => (
                           <button
                             key={s}
                             type="button"
                             onClick={() => setNewStatus(s)}
-                            className={`py-3 rounded-xl border-2 text-xs font-extrabold transition-all ${
+                            className={`py-3 rounded-xl border-2 text-xs font-extrabold transition-all capitalize ${
                               newStatus === s 
                               ? 'border-blue-600 bg-blue-50 text-blue-700' 
                               : 'border-transparent bg-slate-50 text-slate-400 hover:bg-slate-100'
                             }`}
                           >
-                            {s.toUpperCase()}
+                            {s}
                           </button>
                         ))}
                       </div>
@@ -690,10 +852,10 @@ export default function App() {
 
                 <button
                   disabled={submitting || !selectedSantriId}
-                  className="w-full bg-slate-900 border border-slate-800 hover:bg-black text-white font-bold py-5 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg mt-4 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="w-full bg-slate-900 border border-slate-800 hover:bg-black text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-base mt-4 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  {submitting ? <Loader2 className="animate-spin" size={24} /> : <CheckCircle2 size={24} />}
-                  Update Status Santri
+                  {submitting ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
+                  Simpan Perubahan Status
                 </button>
               </form>
             </motion.div>
@@ -975,34 +1137,6 @@ export default function App() {
         </AnimatePresence>
       </main>
       </div>
-
-      {/* Mobile Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-center p-2 z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
-        {[
-          { id: 'dashboard', icon: LayoutDashboard },
-          { id: 'data', icon: Users },
-          { id: 'edit-status', icon: Activity },
-          { id: 'input', icon: UserPlus },
-          { id: 'nfc', icon: CreditCard },
-        ].map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id as any)}
-            className={`p-3 rounded-2xl transition-all relative ${
-              activeTab === item.id ? 'text-blue-600 bg-blue-50' : 'text-slate-400'
-            }`}
-            id={`nav-mobile-${item.id}`}
-          >
-            <item.icon size={22} className={activeTab === item.id ? 'stroke-[2.5px]' : ''} />
-            {activeTab === item.id && (
-              <motion.div 
-                layoutId="nav-pill-mobile" 
-                className="absolute -top-1 left-0 right-0 mx-auto w-1 h-1 bg-blue-600 rounded-full" 
-              />
-            )}
-          </button>
-        ))}
-      </nav>
     </div>
   );
 }
